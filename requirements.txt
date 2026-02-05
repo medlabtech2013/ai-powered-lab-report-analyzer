@@ -1,8 +1,7 @@
 fastapi
 uvicorn
 python-multipart
-pydantic
-pandas
-numpy
-scikit-learn
-python-dotenv
+fastapi
+uvicorn
+python-multipart
+

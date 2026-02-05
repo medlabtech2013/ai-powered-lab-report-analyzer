@@ -1,109 +1,58 @@
 from fastapi import APIRouter, UploadFile, File
-import shutil
-import os
-import uuid
+from app.services.parser import parse_lab
+from app.core.loinc_map import LOINC_MAP
 
 router = APIRouter()
 
-UPLOAD_DIR = "uploads"
-os.makedirs(UPLOAD_DIR, exist_ok=True)
-
-# Simplified clinical reference ranges
-NORMAL_RANGES = {
-    "WBC": (4.0, 11.0, "10^3/uL"),
-    "HGB": (12.0, 17.5, "g/dL"),
-    "PLT": (150, 450, "10^3/uL")
-}
-
-def build_fhir_observation(test, value, unit):
-    return {
-        "resourceType": "Observation",
-        "id": str(uuid.uuid4()),
-        "status": "final",
-        "category": [
-            {
-                "coding": [
-                    {
-                        "system": "http://terminology.hl7.org/CodeSystem/observation-category",
-                        "code": "laboratory",
-                        "display": "Laboratory"
-                    }
-                ]
-            }
-        ],
-        "code": {
-            "text": test
-        },
-        "valueQuantity": {
-            "value": value,
-            "unit": unit
-        }
-    }
-
-def interpret_lab(text: str):
-    results = []
-    clinical_summary = []
-    fhir_observations = []
-
-    for test, (low, high, unit) in NORMAL_RANGES.items():
-        if test in text:
-            for word in text.replace(":", " ").split():
-                try:
-                    value = float(word)
-
-                    # Human-readable result
-                    if value < low:
-                        results.append(f"{test} LOW: {value}")
-                        clinical_summary.append(
-                            f"{test} is below the normal reference range and may require further evaluation."
-                        )
-                    elif value > high:
-                        results.append(f"{test} HIGH: {value}")
-                        clinical_summary.append(
-                            f"{test} is above the normal reference range and may indicate an abnormal finding."
-                        )
-                    else:
-                        results.append(f"{test} NORMAL: {value}")
-
-                    # FHIR Observation
-                    fhir_observations.append(
-                        build_fhir_observation(test, value, unit)
-                    )
-
-                except ValueError:
-                    continue
-
-    if not results:
-        results.append("No recognizable lab values found.")
-        clinical_summary.append("No abnormal laboratory findings were detected.")
-
-    return results, clinical_summary, fhir_observations
-
-
 @router.post("/analyze")
-async def analyze_lab_report(file: UploadFile = File(...)):
-    file_path = f"{UPLOAD_DIR}/{file.filename}"
+async def analyze(file: UploadFile = File(...)):
+    content = (await file.read()).decode("utf-8", errors="ignore")
+    parsed_results = parse_lab(content)
 
-    # Save uploaded file
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-
-    # Read file content
-    with open(file_path, "r", errors="ignore") as f:
-        content = f.read()
-
-    results, summary, observations = interpret_lab(content)
-
-    fhir_bundle = {
+    bundle = {
         "resourceType": "Bundle",
         "type": "collection",
-        "entry": [{"resource": obs} for obs in observations]
+        "entry": []
     }
 
+    for item in parsed_results:
+        test_name = item["test"]
+        value_raw = item["value"]
+
+        loinc = LOINC_MAP.get(test_name, {})
+
+        observation = {
+            "resourceType": "Observation",
+            "status": "final",
+            "category": [{
+                "coding": [{
+                    "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                    "code": "laboratory"
+                }]
+            }],
+            "code": {
+                "coding": [{
+                    "system": "http://loinc.org",
+                    "code": loinc.get("code", "unknown"),
+                    "display": test_name
+                }]
+            },
+            "valueString": value_raw
+        }
+
+        if value_raw.replace(".", "", 1).isdigit():
+            observation["valueQuantity"] = {
+                "value": float(value_raw),
+                "unit": loinc.get("unit", ""),
+                "system": "http://unitsofmeasure.org"
+            }
+            observation.pop("valueString")
+
+        bundle["entry"].append({"resource": observation})
+
     return {
-        "filename": file.filename,
-        "analysis": results,
-        "clinical_summary": summary,
-        "fhir_bundle": fhir_bundle
+        "source": "AI-Powered Lab Report Analyzer",
+        "format": "FHIR-R4",
+        "bundle": bundle
     }
 
