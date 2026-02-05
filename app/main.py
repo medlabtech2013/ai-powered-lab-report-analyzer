@@ -9,10 +9,10 @@ app = FastAPI(
     version="0.1.0"
 )
 
-# ✅ CORS (THIS IS THE FIX)
+# ✅ CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # OK for demo / portfolio
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -21,12 +21,12 @@ app.add_middleware(
 # API routes
 app.include_router(analyze_router)
 
-# Root health check
-@app.get("/")
-def root():
+# API health check (moved)
+@app.get("/api/health")
+def health():
     return {"status": "API is running"}
 
-# Frontend static files
+# Frontend (NOW owns /)
 app.mount(
     "/",
     StaticFiles(directory="frontend", html=True),
