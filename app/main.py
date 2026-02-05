@@ -1,6 +1,6 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
 
 from app.api.analyze import router as analyze_router
 
@@ -9,14 +9,27 @@ app = FastAPI(
     version="0.1.0"
 )
 
+# ✅ CORS (THIS IS THE FIX)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # OK for demo / portfolio
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 # API routes
 app.include_router(analyze_router)
 
-# Serve static files (optional, future use)
-app.mount("/static", StaticFiles(directory="frontend/static"), name="static")
-
-# FRONTEND ROOT
+# Root health check
 @app.get("/")
 def root():
-    return FileResponse("frontend/index.html")
+    return {"status": "API is running"}
+
+# Frontend static files
+app.mount(
+    "/",
+    StaticFiles(directory="frontend", html=True),
+    name="frontend"
+)
 
