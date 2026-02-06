@@ -1,42 +1,67 @@
+import re
+
+# --------------------------------------------
+# Helper: Determine abnormal flag
+# --------------------------------------------
+def flag_result(value, reference_range):
+    try:
+        low, high = reference_range.split("-")
+        low = float(low)
+        high = float(high)
+        value = float(value)
+
+        if value < low:
+            return "L"
+        elif value > high:
+            return "H"
+        else:
+            return "N"
+    except:
+        return "N"
+
+
+# --------------------------------------------
+# Main parser function
+# --------------------------------------------
 def parse_lab(content: str):
     """
-    Accepts:
-    - Simple lab text: Glucose: 95
-    - HL7-ish segments
+    Parses HL7-like lab text and extracts:
+    - test name
+    - value
+    - units
+    - reference range
+    - abnormal flag (H/L/N)
     """
 
-    results = []
+    observations = []
 
     lines = content.splitlines()
 
     for line in lines:
-        line = line.strip()
+        # Example HL7 OBX line:
+        # OBX|1|NM|WBC||14.2|10^3/uL|4-11|H
+        if line.startswith("OBX"):
+            parts = line.split("|")
 
-        if not line:
-            continue
+            try:
+                test_name = parts[3]
+                value = parts[5]
+                units = parts[6]
+                ref_range = parts[7]
 
-        # Handle simple "Test: Value" format
-        if ":" in line:
-            parts = line.split(":", 1)
-            test = parts[0].strip()
-            value = parts[1].strip()
+                observation = {
+                    "test": test_name,
+                    "value": value,
+                    "units": units,
+                    "reference_range": ref_range,
+                    "flag": flag_result(value, ref_range)
+                }
 
-            results.append({
-                "test": test,
-                "value": value
-            })
+                observations.append(observation)
 
-        # Handle HL7 OBX segment (basic)
-        elif line.startswith("OBX"):
-            fields = line.split("|")
-            if len(fields) >= 6:
-                test = fields[3].split("^")[1] if "^" in fields[3] else fields[3]
-                value = fields[5]
+            except IndexError:
+                # Skip malformed lines
+                continue
 
-                results.append({
-                    "test": test,
-                    "value": value
-                })
-
-    return results
+    return observations
 

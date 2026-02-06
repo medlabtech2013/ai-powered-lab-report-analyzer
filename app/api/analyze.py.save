@@ -1,0 +1,100 @@
+from app.services.clinical_summary import generate_summary
+from fastapi import APIRouter, UploadFile, File, HTTPException
+from datetime import datetime
+from app.services.parser import parse_lab
+from app.core.loinc_map import LOINC_MAP
+
+router = APIRouter()
+
+@router.post("/analyze")
+async def analyze(file: UploadFile = File(...)):
+    try:
+        content = (await file.read()).decode("utf-8", errors="ignore")
+        parsed_results = parse_lab(content)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    bundle = {
+        "resourceType": "Bundle",
+        "type": "collection",
+        "entry": []
+    }
+
+    patient_ref = {
+        "reference": "Patient/example",
+        "display": "Demo Patient"
+    }
+
+    for idx, item in enumerate(parsed_results):
+        loinc = LOINC_MAP.get(item["test"], "00000-0")
+        low, high = item["reference_range"].split("-")
+
+        interpretation_code = {
+            "H": "High",
+            "L": "Low",
+            "N": "Normal"
+        }.get(item["flag"], "Normal")
+
+        observation = {
+            "resource": {
+                "resourceType": "Observation",
+                "id": f"obs-{idx}",
+                "status": "final",
+                "category": [{
+                    "coding": [{
+                        "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                        "code": "laboratory",
+                        "display": "Laboratory"
+                    }]
+                }],
+                "code": {
+                    "coding": [{
+                        "system": "http://loinc.org",
+                        "code": loinc,
+                        "display": item["test"]
+                    }],
+                    "text": item["test"]
+                },
+                "subject": patient_ref,
+                "effectiveDateTime": datetime.utcnow().isoformat(),
+                "valueQuantity": {
+                    "value": float(item["value"]),
+                    "unit": item["units"],
+                    "system": "http://unitsofmeasure.org",
+                    "code": item["units"]
+                },
+                "referenceRange": [{
+                    "low": { "value": float(low) },
+                    "high": { "value": float(high) }
+                }],
+                "interpretation": [{
+                    "coding": [{
+                        "system": "http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation",
+                        "code": item["flag"],
+                        "display": interpretation_code
+                    }]
+                }],
+                "specimen": {
+                    "display": "Blood"
+                },
+                "performer": [{
+                    "display": "AI Lab Report Analyzer"
+                }]
+            }
+        }
+
+        bundle["entry"].append(observation)
+return {
+    "status": "success",
+    "clinical_summary": clinical_summary,
+    "fhir_version": "R4",
+    "bundle": bundle
+}
+clinical_summary = generate_summary(parsed_results)
+
+    return {
+        "status": "success",
+        "fhir_version": "R4",
+        "bundle": bundle
+    }
+
