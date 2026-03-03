@@ -247,9 +247,18 @@ def add_page_number(canvas_obj, doc):
     canvas_obj.setFont("Helvetica", 9)
     canvas_obj.drawRightString(800, 20, page_num_text)
 
+def add_watermark(canvas_obj, doc):
+    canvas_obj.saveState()
+    width, height = doc.pagesize
+    canvas_obj.setFont("Helvetica-Bold", 60)
+    canvas_obj.setFillColorRGB(0.9, 0.9, 0.9)
+    canvas_obj.translate(width/2, height/2)
+    canvas_obj.rotate(45)
+    canvas_obj.drawCentredString(0, 0, "CONFIDENTIAL")
+    canvas_obj.restoreState()
+
 def add_page_decorations(canvas_obj, doc):
     add_page_number(canvas_obj, doc)
-    add_watermark(canvas_obj, doc)
 
 @app.post("/download/pdf")
 async def download_pdf(request: Request):
@@ -624,6 +633,31 @@ def verify_report(report_id: str):
                 padding: 50px;
             }}
 
+            .topbar{
+                display:flex;
+                justify-content:space-between;
+                align-items:center;
+                border-bottom:1px solid #e5e7eb;
+                padding-bottom:14px;
+                margin-bottom:24px;
+           }
+           .brand{
+               display:flex;
+               gap:14px;
+               align-items:center;
+           }
+           .logo{ height:45px; }
+           .badge{ height:55px; }
+           .hosp{
+               font-size:18px;
+               font-weight:700;
+               color:#003366;
+           }
+           .tag{
+               font-size:12px;
+               color:#6c757d;
+           }
+
             .topbar {{
                 display:flex;
                 justify-content:space-between;
@@ -682,15 +716,17 @@ def verify_report(report_id: str):
     <body>
 
         <div class="topbar">
-            <div class="brand">
-                <img src="/static/assets/hospital_logo.png" class="logo"/>
-                <div>
-                    <div class="hosp">PrecisionPoint Medical Center</div>
-                    <div class="tag">CliniSight AI™ Clinical Intelligence Verification Portal</div>
-                </div>
+    <div class="brand">
+        <img src="/static/assets/hospital_logo.png" class="logo"/>
+        <div>
+            <div class="hosp">PrecisionPoint Medical Center</div>
+            <div class="tag">
+                CliniSight AI™ Clinical Intelligence Verification Portal
             </div>
-            <img src="/static/assets/accreditation_badge.png" class="badge"/>
         </div>
+    </div>
+    <img src="/static/assets/accreditation_badge.png" class="badge"/>
+</div>
 
         <div class="container">
 
