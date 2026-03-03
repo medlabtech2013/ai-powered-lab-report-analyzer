@@ -1,17 +1,7 @@
-# Virtual environment
 venv/
-
-# Python cache
 __pycache__/
 *.pyc
-
-# Uploaded lab files
-uploads/
 data/
-
-# Environment files
+trend_chart.png
 .env
-
-# OS junk
-.DS_Store
 
