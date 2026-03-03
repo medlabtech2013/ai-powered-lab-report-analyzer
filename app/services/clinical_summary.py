@@ -14,4 +14,3 @@ def generate_summary(observations):
 
     summary = "Findings suggest " + " and ".join(set(findings)) + "."
     return summary
-

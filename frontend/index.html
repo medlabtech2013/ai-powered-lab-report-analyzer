@@ -1,76 +1,287 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>AI-Powered Lab Report Analyzer</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 40px;
-        }
-        pre {
-            background: #f4f4f4;
-            padding: 15px;
-            white-space: pre-wrap;
-        }
-        .error {
-            color: red;
-        }
-    </style>
+<meta charset="UTF-8" />
+<title>CliniSight AI™ Clinical Intelligence Platform</title>
+
+<link rel="stylesheet" href="/static/style.css">
+
+<style>
+/* ===== Hospital / Epic Style Palette ===== */
+body {
+    font-family: "Segoe UI", Arial, sans-serif;
+    background-color: #f4f6f9;
+    margin: 40px;
+    color: #1f2937;
+}
+
+h1 {
+    color: #1f3b64;
+    font-weight: 600;
+}
+
+h2 {
+    color: #2c4a6b;
+    margin-top: 30px;
+    border-bottom: 1px solid #d1d5db;
+    padding-bottom: 5px;
+}
+
+input, button {
+    padding: 6px 10px;
+    border-radius: 4px;
+    border: 1px solid #cbd5e1;
+    font-size: 14px;
+}
+
+button {
+    background-color: #e5e7eb;
+    cursor: pointer;
+}
+
+button:hover {
+    background-color: #d1d5db;
+}
+
+
+/* ===== Table Styling ===== */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+}
+
+th {
+    background-color: #e2e8f0;
+    text-align: left;
+    padding: 8px;
+    font-weight: 600;
+}
+
+td {
+    padding: 8px;
+    border-top: 1px solid #e5e7eb;
+}
+
+tr:nth-child(even) {
+    background-color: #f9fafb;
+}
+
+/* ===== Flag Badges ===== */
+.flag-badge {
+    display: inline-block;
+    width: 24px;
+    height: 24px;
+    line-height: 24px;
+    text-align: center;
+    border-radius: 50%;
+    font-weight: 600;
+    font-size: 13px;
+    color: white;
+}
+
+/* HIGH = RED */
+.flag-high {
+    background-color: #b91c1c;
+}
+
+/* LOW = BLUE */
+.flag-low {
+    background-color: #2563eb;
+}
+
+.critical-alert {
+    background-color: #7f1d1d;
+    color: white;
+    padding: 12px;
+    margin-top: 12px;
+    border-radius: 6px;
+    font-weight: 700;
+}
+
+/* ===== Clinical Summary Box ===== */
+.summary-box {
+    background: white;
+    border-left: 4px solid #2563eb;
+    padding: 10px;
+    margin-top: 10px;
+}
+
+
+/* ===== Row Highlighting ===== */
+tr.high-row {
+    background-color: #fee2e2 !important;
+}
+
+tr.low-row {
+    background-color: #dbeafe !important;
+}
+
+/* ===== Trend Alert Banner ===== */
+
+.trend-banner{
+  padding:12px 14px;
+  border-radius:10px;
+  margin:10px 0 14px 0;
+  font-weight:600;
+  border:1px solid rgba(0,0,0,0.08);
+  transition: all 0.25s ease-in-out;
+}
+
+.trend-banner.ok{
+  background:#dcfce7;
+  color:#14532d;
+}
+
+.trend-banner.warn{
+  background:#fef3c7;
+  color:#92400e;
+}
+
+.trend-banner.danger{
+  background:#fee2e2;
+  color:#7f1d1d;
+}
+
+/* ===== Dark Mode ===== */
+
+body.dark{
+  background:#0b1220;
+  color:#e5e7eb;
+}
+
+body.dark table{
+  background:#111827;
+  color:#e5e7eb;
+}
+
+body.dark .summary-box{
+  background:#1f2937;
+  color:#e5e7eb;
+}
+
+body.dark .trend-banner{
+  border:1px solid rgba(255,255,255,0.08);
+}
+
+body.dark .trend-banner.ok{
+  background:#0f2a1b;
+  color:#bbf7d0;
+}
+
+body.dark .trend-banner.warn{
+  background:#2a230f;
+  color:#fde68a;
+}
+
+body.dark .trend-banner.danger{
+  background:#2a1212;
+  color:#fecaca;
+}
+
+
+</style>
 </head>
+
 <body>
 
-<h1>AI-Powered Lab Report Analyzer</h1>
+<h1>CliniSight AI™ Clinical Intelligence Platform</h1>
 
-<input type="file" id="fileInput" />
+<h2>Patient Information</h2>
+
+<input type="checkbox" id="demoMode">
+<label for="demoMode">Demo Mode</label>
+
+<br><br>
+
+Name:
+<input type="text" id="patientName" placeholder="Enter Patient Name">
+
+DOB:
+<input type="date" id="dob">
+
+MRN:
+<input type="text" id="mrn" placeholder="Enter MRN">
+
+<br><br>
+
+<input type="file" id="fileInput">
 <button onclick="analyze()">Analyze</button>
+<button onclick="downloadPDF()">Download PDF</button>
+<button onclick="downloadFHIR()">Download FHIR (JSON)</button>
 
-<p id="status"></p>
-<pre id="output"></pre>
+<h2>Clinical Summary</h2>
+<div id="summary" class="summary-box">—</div>
+<div id="severityBanner" style="margin-top:10px; padding:8px; border-radius:6px; font-weight:600;"></div>
+<div id="criticalAlert" class="critical-alert" style="display:none;"></div>
+<div id="riskBadge" style="margin-top:8px; font-weight:700;"></div>
+<div id="riskMeterContainer" style="margin-top:10px;">
+    <div style="background:#e5e7eb; height:12px; border-radius:6px;">
+        <div id="riskMeterFill"
+             style="height:12px;
+                    width:0%;
+                    border-radius:6px;
+                    transition: width 0.6s ease-in-out;">
+        </div>
+    </div>
+</div>
 
-<script>
-async function analyze() {
-    const fileInput = document.getElementById("fileInput");
-    const status = document.getElementById("status");
-    const output = document.getElementById("output");
+<div style="margin-top:20px;">
+    <div style="font-size:14px; font-weight:600;">
+        Predictive Deterioration Index:
+        <span id="deteriorationLabel">0%</span>
+    </div>
 
-    status.textContent = "";
-    output.textContent = "";
+    <div style="background:#e5e7eb; height:12px; border-radius:6px; margin-top:6px;">
+        <div id="deteriorationMeter"
+             style="height:12px;
+                    width:0%;
+                    border-radius:6px;
+                    transition: width 0.6s ease-in-out;">
+        </div>
+    </div>
+<div id="probabilityPanel" class="summary-box"></div>
+</div>
 
-    if (!fileInput.files.length) {
-        status.textContent = "Please select a file.";
-        status.className = "error";
-        return;
-    }
+<h2>Observations</h2>
 
-    const formData = new FormData();
-    formData.append("file", fileInput.files[0]);  // 🔑 MUST be named "file"
+<table>
+<thead>
+<tr>
+<th>Test</th>
+<th>Value</th>
+<th>Units</th>
+<th>Reference</th>
+<th>Flag</th>
+<th>LOINC</th>
+</tr>
+</thead>
+<tbody id="results"></tbody>
+</table>
 
-    try {
-        const response = await fetch(
-            "https://ai-powered-lab-report-analyzer.onrender.com/analyze",
-            {
-                method: "POST",
-                body: formData
-            }
-        );
+<div style="background:white; padding:20px; border-radius:12px; box-shadow:0 6px 18px rgba(0,0,0,0.08);">
+<h2>Trend Analysis</h2>
 
-        const data = await response.json();
+<div id="trendAlertBanner" class="trend-banner ok">
+    Trend appears stable.
+</div>
 
-        if (!response.ok) {
-            throw new Error(data.detail || "Analysis failed");
-        }
+<div style="margin-bottom:10px;">
+    Test:
+    <select id="testSelector" onchange="drawTrendChart()"></select>
 
-        output.textContent = JSON.stringify(data, null, 2);
+    <button onclick="clearHistory()">Clear Trend History</button>
+    <button onclick="toggleDarkMode()">Toggle Dark Mode</button>
+    <span id="runCount" style="margin-left:15px; font-weight:600;"></span>
+</div>
 
-    } catch (err) {
-        status.textContent = "Error analyzing file.";
-        status.className = "error";
-        output.textContent = err.message;
-    }
-}
-</script>
+<canvas id="trendChart" width="700" height="350"></canvas>
+<div id="trendInsight" class="summary-box" style="margin-top:15px;">
+    —
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="/static/app.js"></script>
 
 </body>
 </html>
-

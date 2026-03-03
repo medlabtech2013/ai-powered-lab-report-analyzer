@@ -6,3 +6,7 @@ LOINC_MAP = {
     "RBC": "789-8"
 }
 
+LOINC_MAP = {
+    "WBC": "6690-2",
+    "HGB": "718-7"
+}

@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>CliniSight AI™ Clinical Intelligence Platform</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 40px;
+    }
+    pre {
+      background: #f4f4f4;
+      padding: 15px;
+      white-space: pre-wrap;
+    }
+    .error {
+      color: red;
+      font-weight: bold;
+    }
+    .section {
+      margin-top: 25px;
+    }
+  </style>
+</head>
+<body>
+
+<h1>CliniSight AI™ Clinical Intelligence Platform</h1>
+
+<input type="file" id="fileInput" />
+<button onclick="analyze()">Analyze</button>
+
+<div id="status" class="section"></div>
+
+<div id="summary" class="section"></div>
+<div id="observations" class="section"></div>
+<div id="fhir" class="section"></div>
+
+<script>
+async function analyzeLab() {
+  const fileInput = document.getElementById("file");
+  const resultDiv = document.getElementById("results");
+
+  if (!fileInput.files.length) {
+    alert("Please select a lab file.");
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append("file", fileInput.files[0]);
+
+  resultDiv.innerHTML = "<p>Analyzing…</p>";
+
+  try {
+    const response = await fetch("/analyze", {
+      method: "POST",
+      body: formData
+    });
+
+    const data = await response.json();
+
+    renderResults(data);
+  } catch (err) {
+    resultDiv.innerHTML = "<p style='color:red;'>Analysis failed.</p>";
+  }
+}
+
+function renderResults(data) {
+  const resultDiv = document.getElementById("results");
+
+  let html = `<h3>Clinical Summary</h3>
+              <p>${data.clinical_summary}</p>`;
+
+  if (data.observations.length === 0) {
+    html += "<p>No valid observations detected.</p>";
+  } else {
+    html += `<h3>Observations</h3>
+             <table border="1" cellpadding="8">
+               <tr>
+                 <th>Test</th>
+                 <th>Value</th>
+                 <th>Units</th>
+                 <th>Reference</th>
+                 <th>Flag</th>
+               </tr>`;
+
+    data.observations.forEach(obs => {
+      let color = obs.flag === "H" ? "#ffcccc" :
+                  obs.flag === "L" ? "#cce5ff" : "#ccffcc";
+
+      html += `
+        <tr style="background:${color}">
+          <td>${obs.test}</td>
+          <td>${obs.value}</td>
+          <td>${obs.units}</td>
+          <td>${obs.reference_range}</td>
+          <td>${obs.flag}</td>
+        </tr>`;
+    });
+
+</body>
+</html>
+

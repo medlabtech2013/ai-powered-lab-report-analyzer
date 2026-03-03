@@ -1,0 +1,151 @@
+/* ============================= */
+/*  GLOBAL LAYOUT                */
+/* ============================= */
+
+body {
+    font-family: "Segoe UI", Roboto, Arial, sans-serif;
+    background-color: #f4f6f9;
+    margin: 30px;
+    color: #2f3b4c;
+}
+
+h1 {
+    font-size: 24px;
+    margin-bottom: 10px;
+    color: #1f2a38;
+}
+
+h2 {
+    font-size: 18px;
+    margin-top: 30px;
+    margin-bottom: 10px;
+    color: #34495e;
+    border-bottom: 2px solid #d9dee5;
+    padding-bottom: 5px;
+}
+
+/* ============================= */
+/*  INPUTS / BUTTONS             */
+/* ============================= */
+
+input[type="text"],
+input[type="date"],
+input[type="file"] {
+    padding: 6px 8px;
+    border: 1px solid #c7d0d9;
+    border-radius: 4px;
+    background: white;
+    font-size: 14px;
+}
+
+button {
+    padding: 6px 12px;
+    margin-right: 5px;
+    border-radius: 4px;
+    border: 1px solid #c7d0d9;
+    background-color: #e9edf2;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+button:hover {
+    background-color: #dce3ea;
+}
+
+/* ============================= */
+/*  TABLE STYLING                */
+/* ============================= */
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    margin-top: 10px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+th, td {
+    border: 1px solid #e1e6ec;
+    padding: 8px;
+    text-align: left;
+    font-size: 14px;
+}
+
+th {
+    background-color: #eef2f6;
+    font-weight: 600;
+    color: #34495e;
+}
+
+/* Alternating row shading */
+tbody tr:nth-child(even) {
+    background-color: #f9fbfd;
+}
+
+/* ============================= */
+/*  HIGH / LOW ROWS              */
+/* ============================= */
+
+/* Subtle background highlight */
+
+tr.high {
+    background-color: #fff0f0;
+}
+
+tr.low {
+    background-color: #eef6ff;
+}
+
+/* ============================= */
+/*  FLAG BADGES                  */
+/* ============================= */
+
+.flag-badge {
+    font-weight: 600;
+    font-size: 12px;
+    padding: 3px 8px;
+    border-radius: 12px;
+    display: inline-block;
+    letter-spacing: 0.5px;
+}
+
+/* Hospital Red */
+.flag-high {
+    background-color: #b71c1c;
+    color: white;
+}
+
+/* Clinical Blue */
+.flag-low {
+    background-color: #1565c0;
+    color: white;
+}
+
+/* ============================= */
+/*  CLINICAL SUMMARY BOX         */
+/* ============================= */
+
+#summary {
+    background: white;
+    padding: 15px;
+    border-left: 4px solid #1565c0;
+    margin-top: 10px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+/* ============================= */
+/*  DEMO MODE BANNER             */
+/* ============================= */
+
+#demo-banner {
+    background-color: #fff8e1;
+    border: 1px solid #ffecb3;
+    padding: 8px;
+    font-weight: 600;
+    margin-bottom: 15px;
+}
+
+.hidden {
+    display: none;
+}
+

@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>CliniSight AI™ Clinical Intelligence Platform</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 40px;
+    }
+    pre {
+      background: #f4f4f4;
+      padding: 15px;
+      white-space: pre-wrap;
+    }
+    .error {
+      color: red;
+      font-weight: bold;
+    }
+    .section {
+      margin-top: 25px;
+    }
+  </style>
+</head>
+<body>
+
+<h1>CliniSight AI™ Clinical Intelligence Platform</h1>
+
+<input type="file" id="file">
+<button onclick="analyzeLab()">Analyze</button>
+
+<div id="results"></div>
+
+<div id="summary" class="section"></div>
+<div id="observations" class="section"></div>
+<div id="fhir" class="section"></div>
+
+<script>
+async function analyzeLab() {
+  const fileInput = document.getElementById("file");
+  const resultsDiv = document.getElementById("results");
+
+  if (!fileInput.files.length) {
+    alert("Please select a file first.");
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append("file", fileInput.files[0]);
+
+  resultsDiv.innerHTML = "Analyzing…";
+
+  try {
+    const response = await fetch("/analyze", {
+      method: "POST",
+      body: formData
+    });
+
+    const data = await response.json();
+    renderResults(data);
+  } catch (err) {
+    resultsDiv.innerHTML = "<p style='color:red;'>Error analyzing file.</p>";
+  }
+}
+
+function renderResults(data) {
+  let html = `
+    <h2>Clinical Summary</h2>
+    <p>${data.clinical_summary}</p>
+
+    <h2>Observations</h2>
+    <table border="1" cellpadding="8">
+      <tr>
+        <th>Test</th>
+        <th>Value</th>
+        <th>Units</th>
+        <th>Reference</th>
+        <th>Flag</th>
+        <th>LOINC</th>
+      </tr>
+  `;
+
+  data.observations.forEach(obs => {
+    let bgColor =
+      obs.flag === "H" ? "#ffcccc" :
+      obs.flag === "L" ? "#cce5ff" :
+      "#ccffcc";
+
+<div class="legend">
+  <span class="legend-item high">High (H)</span>
+  <span class="legend-item low">Low (L)</span>
+  <span class="legend-item normal">Normal</span>
+</div>    html += `
+      <tr style="background:${bgColor}">
+        <td>${obs.test}</td>
+        <td>${obs.value}</td>
+        <td>${obs.units}</td>
+        <td>${obs.reference_range}</td>
+        <td>${obs.flag}</td>
+        <td>${obs.loinc}</td>
+      </tr>
+    `;
+  });
+
+  html += `
+    </table>
+
+    <h2>FHIR Bundle (Raw)</h2>
+    <pre>${JSON.stringify(data.fhir, null, 2)}</pre>
+  `;
+
+  document.getElementById("results").innerHTML = html;
+}
+</script>
+
+</body>
+</html>
+

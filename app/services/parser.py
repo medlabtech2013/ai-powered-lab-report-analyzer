@@ -1,67 +1,50 @@
-import re
+from app.core.loinc_map import LOINC_MAP
 
-# --------------------------------------------
-# Helper: Determine abnormal flag
-# --------------------------------------------
-def flag_result(value, reference_range):
-    try:
-        low, high = reference_range.split("-")
-        low = float(low)
-        high = float(high)
-        value = float(value)
-
-        if value < low:
-            return "L"
-        elif value > high:
-            return "H"
-        else:
-            return "N"
-    except:
-        return "N"
-
-
-# --------------------------------------------
-# Main parser function
-# --------------------------------------------
 def parse_lab(content: str):
-    """
-    Parses HL7-like lab text and extracts:
-    - test name
-    - value
-    - units
-    - reference range
-    - abnormal flag (H/L/N)
-    """
-
     observations = []
-
     lines = content.splitlines()
 
     for line in lines:
-        # Example HL7 OBX line:
-        # OBX|1|NM|WBC||14.2|10^3/uL|4-11|H
-        if line.startswith("OBX"):
-            parts = line.split("|")
+        if not line.startswith("OBX|"):
+            continue
 
-            try:
-                test_name = parts[3]
-                value = parts[5]
-                units = parts[6]
-                ref_range = parts[7]
+        fields = line.split("|")
 
-                observation = {
-                    "test": test_name,
-                    "value": value,
-                    "units": units,
-                    "reference_range": ref_range,
-                    "flag": flag_result(value, ref_range)
-                }
+        # Minimum HL7 OBX length check
+        if len(fields) < 8:
+            continue
 
-                observations.append(observation)
+        test = fields[3].strip()
+        raw_value = fields[5].strip()
+        units = fields[6].strip()
+        ref_range = fields[7].strip()
 
-            except IndexError:
-                # Skip malformed lines
-                continue
+        # Skip incomplete observations
+        if not test or not raw_value or not ref_range:
+            continue
+
+        try:
+            value = float(raw_value)
+            ref_low, ref_high = map(float, ref_range.split("-"))
+        except ValueError:
+            # Non-numeric or malformed data
+            continue
+
+        if value < ref_low:
+            flag = "L"
+        elif value > ref_high:
+            flag = "H"
+        else:
+            flag = "N"
+
+        observations.append({
+            "test": test,
+            "value": value,
+            "units": units,
+            "reference_range": ref_range,
+            "flag": flag,
+            "loinc": LOINC_MAP.get(test, "unknown")
+        })
 
     return observations
 

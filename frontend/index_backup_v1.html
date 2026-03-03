@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>CliniSight AI™ Clinical Intelligence Platform</title>
+
+<link rel="stylesheet" href="/static/style.css">
+
+<style>
+/* ===== Hospital / Epic Style Palette ===== */
+body {
+    font-family: "Segoe UI", Arial, sans-serif;
+    background-color: #f4f6f9;
+    margin: 40px;
+    color: #1f2937;
+}
+
+h1 {
+    color: #1f3b64;
+    font-weight: 600;
+}
+
+h2 {
+    color: #2c4a6b;
+    margin-top: 30px;
+    border-bottom: 1px solid #d1d5db;
+    padding-bottom: 5px;
+}
+
+input, button {
+    padding: 6px 10px;
+    border-radius: 4px;
+    border: 1px solid #cbd5e1;
+    font-size: 14px;
+}
+
+button {
+    background-color: #e5e7eb;
+    cursor: pointer;
+}
+
+button:hover {
+    background-color: #d1d5db;
+}
+
+/* ===== Table Styling ===== */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+}
+
+th {
+    background-color: #e2e8f0;
+    text-align: left;
+    padding: 8px;
+    font-weight: 600;
+}
+
+td {
+    padding: 8px;
+    border-top: 1px solid #e5e7eb;
+}
+
+tr:nth-child(even) {
+    background-color: #f9fafb;
+}
+
+/* ===== Flag Badges ===== */
+.flag-badge {
+    display: inline-block;
+    width: 24px;
+    height: 24px;
+    line-height: 24px;
+    text-align: center;
+    border-radius: 50%;
+    font-weight: 600;
+    font-size: 13px;
+    color: white;
+}
+
+/* HIGH = RED */
+.flag-high {
+    background-color: #b91c1c;
+}
+
+/* LOW = BLUE */
+.flag-low {
+    background-color: #2563eb;
+}
+
+/* ===== Clinical Summary Box ===== */
+.summary-box {
+    background: white;
+    border-left: 4px solid #2563eb;
+    padding: 10px;
+    margin-top: 10px;
+}
+</style>
+</head>
+
+<body>
+
+<h1>CliniSight AI™ Clinical Intelligence Platform</h1>
+
+<h2>Patient Information</h2>
+
+<label>
+<input type="checkbox" id="demoToggle">
+Demo Mode
+</label>
+
+<br><br>
+
+Name:
+<input type="text" id="patientName" value="Branden Bryant">
+
+DOB:
+<input type="date" id="dob" value="1986-12-03">
+
+MRN:
+<input type="text" id="mrn" value="123456">
+
+<br><br>
+
+<input type="file" id="fileInput">
+<button onclick="analyze()">Analyze</button>
+<button onclick="downloadPDF()">Download PDF</button>
+<button onclick="downloadFHIR()">Download FHIR (JSON)</button>
+
+<h2>Clinical Summary</h2>
+<div id="summary" class="summary-box">—</div>
+
+<h2>Observations</h2>
+
+<table>
+<thead>
+<tr>
+<th>Test</th>
+<th>Value</th>
+<th>Units</th>
+<th>Reference</th>
+<th>Flag</th>
+<th>LOINC</th>
+</tr>
+</thead>
+<tbody id="results"></tbody>
+</table>
+
+<h2>Trend Analysis</h2>
+<canvas id="trendChart" width="600" height="300"></canvas>
+
+<script>
+let lastResult = null;
+
+/* ================= ANALYZE FUNCTION ================= */
+async function analyze() {
+
+    const file = document.getElementById("fileInput").files[0];
+    if (!file) {
+        alert("Please select an HL7 file");
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+
+        const res = await fetch("/analyze", {
+            method: "POST",
+            body: formData
+        });
+
+        if (!res.ok) throw new Error("Server error");
+
+        const data = await res.json();
+        lastResult = data;
+
+        document.getElementById("summary").innerText =
+            data.summary || "—";
+
+        const tbody = document.getElementById("results");
+        tbody.innerHTML = "";
+
+        (data.observations || []).forEach(o => {
+
+            /* ===== BULLETPROOF FLAG NORMALIZATION ===== */
+            const flag = String(o.flag || "")
+                .trim()
+                .replace(/[^A-Za-z]/g, "")
+                .toUpperCase();
+
+            let flagClass = "";
+            if (flag === "H") flagClass = "flag-high";
+            if (flag === "L") flagClass = "flag-low";
+
+            const tr = document.createElement("tr");
+
+            tr.innerHTML = `
+                <td>${o.test || ""}</td>
+                <td>${o.value || ""}</td>
+                <td>${o.units || ""}</td>
+                <td>${o.reference || ""}</td>
+                <td>
+                    ${flag ? `<span class="flag-badge ${flagClass}">${flag}</span>` : ""}
+                </td>
+                <td>${o.loinc || ""}</td>
+            `;
+
+            tbody.appendChild(tr);
+        });
+
+    } catch (err) {
+        console.error(err);
+        alert("Analyze failed. Check console.");
+    }
+}
+
+/* ================= PDF ================= */
+async function downloadPDF() {
+
+    if (!lastResult) {
+        alert("Run Analyze first");
+        return;
+    }
+
+    const payload = {
+        patient_name: document.getElementById("patientName").value,
+        dob: document.getElementById("dob").value,
+        mrn: document.getElementById("mrn").value,
+        summary: lastResult.summary,
+        observations: lastResult.observations
+    };
+
+    const res = await fetch("/export/pdf", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+    });
+
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    window.open(url);
+}
+
+/* ================= FHIR ================= */
+async function downloadFHIR() {
+
+    if (!lastResult) {
+        alert("Run Analyze first");
+        return;
+    }
+
+    const payload = {
+        patient_name: document.getElementById("patientName").value,
+        dob: document.getElementById("dob").value,
+        mrn: document.getElementById("mrn").value,
+        observations: lastResult.observations
+    };
+
+    const res = await fetch("/export/fhir", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+    });
+
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    window.open(url);
+}
+</script>
+
+</body>
+</html>
